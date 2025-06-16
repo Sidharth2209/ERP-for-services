@@ -1,98 +1,95 @@
+// frontend/src/services/api.js
 import axios from 'axios';
+import store from '../store/store';
+import { logout } from '../store/authSlice';
 
-const API_URL = 'http://localhost:8000/';
+// Create axios instance with base configuration
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-// Create axios instance with default config
-const api = axios.create({
-    baseURL: API_URL,
-    withCredentials: true,  // Important for handling cookies/sessions
-    headers: {
-        'Content-Type': 'application/json',
-    },
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true, // Important for session-based auth
 });
 
-// Auth services
-export const authService = {
-    login: async (email, password) => {
-        const response = await api.post('/accounts/api/login/', { email, password });
-        return response.data;
-    },
-
-    register: async (userData) => {
-        try {
-            // Format the data according to the backend's expectations
-            const registrationData = {
-                email: userData.email,
-                password: userData.password,
-                confirm_password: userData.confirm_password,
-                first_name: userData.first_name,
-                last_name: userData.last_name,
-                role: userData.role,
-                phone: userData.phone || '',
-                company_name: userData.company_name,
-                registration_number: userData.registration_number,
-                industry: userData.industry,
-                address: userData.address || '',
-                city: userData.city || '',
-                state: userData.state || '',
-                postal_code: userData.postal_code || '',
-                country: userData.country || '',
-                website: userData.website || ''
-            };
-
-            const response = await api.post('/accounts/api/register/', registrationData);
-            return response.data;
-        } catch (error) {
-            if (error.response?.data) {
-                // Handle specific backend validation errors
-                const errorData = error.response.data;
-                if (typeof errorData === 'object') {
-                    const errorMessages = Object.entries(errorData)
-                        .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
-                        .join('\n');
-                    throw new Error(errorMessages);
-                }
-                throw new Error(errorData.error || 'Registration failed');
-            }
-            throw error;
-        }
-    },
-
-    logout: async () => {
-        const response = await api.post('/accounts/api/logout/');
-        return response.data;
-    },
-
-    getCurrentUser: async () => {
-        const response = await api.get('/accounts/api/user/');
-        return response.data;
-    },
-
-    getCompanyProfile: async (companyId) => {
-        const response = await api.get(`/companies/api/profile/${companyId}/`);
-        return response.data;
-    },
-};
-
-// Add request interceptor to handle errors
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response) {
-            // The request was made and the server responded with a status code
-            // that falls out of the range of 2xx
-            console.error('API Error:', error.response.data);
-            return Promise.reject(error.response.data);
-        } else if (error.request) {
-            // The request was made but no response was received
-            console.error('API Error: No response received');
-            return Promise.reject({ error: 'No response received from server' });
-        } else {
-            // Something happened in setting up the request that triggered an Error
-            console.error('API Error:', error.message);
-            return Promise.reject({ error: error.message });
-        }
+// Request interceptor to add auth headers
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-export default api; 
+// Response interceptor for error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Unauthorized - logout user
+      store.dispatch(logout());
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth API calls
+export const authAPI = {
+  login: (credentials) => apiClient.post('/accounts/api/login/', credentials),
+  register: (userData) => apiClient.post('/accounts/api/register/', userData),
+  logout: () => apiClient.post('/accounts/api/logout/'),
+  getCurrentUser: () => apiClient.get('/accounts/api/user/'),
+  updateProfile: (userData) => apiClient.patch('/accounts/api/user/', userData),
+};
+
+// Company API calls
+export const companyAPI = {
+  getCompanyProfile: (companyId) => apiClient.get(`/companies/api/profile/${companyId}/`),
+  updateCompany: (companyId, data) => apiClient.patch(`/companies/api/profile/${companyId}/`, data),
+  registerCompany: (companyData) => apiClient.post('/companies/api/register/', companyData),
+  
+  // Departments
+  getDepartments: () => apiClient.get('/companies/api/departments/'),
+  createDepartment: (departmentData) => apiClient.post('/companies/api/departments/', departmentData),
+  updateDepartment: (deptId, data) => apiClient.patch(`/companies/api/departments/${deptId}/`, data),
+  deleteDepartment: (deptId) => apiClient.delete(`/companies/api/departments/${deptId}/`),
+  
+  // Admin Users
+  getAdminUsers: () => apiClient.get('/companies/api/admin-users/'),
+  createAdminUser: (userData) => apiClient.post('/companies/api/admin-users/', userData),
+  deleteAdminUser: (userId) => apiClient.delete(`/companies/api/admin-users/${userId}/`),
+};
+
+// Employee API calls
+export const employeeAPI = {
+  getEmployees: () => apiClient.get('/employees/api/employees/'),
+  createEmployee: (employeeData) => apiClient.post('/employees/api/employees/', employeeData),
+  getEmployee: (employeeId) => apiClient.get(`/employees/api/employees/${employeeId}/`),
+  updateEmployee: (employeeId, data) => apiClient.patch(`/employees/api/employees/${employeeId}/`, data),
+  deleteEmployee: (employeeId) => apiClient.delete(`/employees/api/employees/${employeeId}/`),
+};
+
+// Generic API helper
+export const apiCall = async (apiFunction, ...args) => {
+  try {
+    const response = await apiFunction(...args);
+    return { data: response.data, error: null };
+  } catch (error) {
+    console.error('API Error:', error);
+    return {
+      data: null,
+      error: error.response?.data?.message || error.message || 'An error occurred'
+    };
+  }
+};
+
+export default apiClient;

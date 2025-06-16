@@ -78,6 +78,7 @@ class CompanyDetailView(generics.RetrieveUpdateAPIView):
             )
 
 
+
 class DepartmentListCreateView(generics.ListCreateAPIView):
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated]
@@ -155,4 +156,4 @@ class AdminUserDetailView(generics.RetrieveDestroyAPIView):
     def perform_destroy(self, instance):
         if not self.request.user.is_parent or instance.role != User.UserRole.ADMIN:
             raise generics.exceptions.PermissionDenied("You do not have permission to delete this admin user.")
-        instance.delete() 
+        instance.delete()

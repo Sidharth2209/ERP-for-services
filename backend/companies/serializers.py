@@ -15,11 +15,11 @@ class CompanySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'owner', 'registration_number', 'industry',
             'industry_display', 'address', 'city', 'state', 'postal_code',
-            'country', 'website', 'logo', 'established_date', 'is_active',
+            'country', 'website', 'is_active',
             'phone',
             'departments_count', 'employees_count', 'admin_count'
         ]
-        read_only_fields = ('id', 'owner', 'established_date', 'is_active')
+        read_only_fields = ('id', 'owner', 'is_active')
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -34,7 +34,7 @@ class CompanyRegistrationSerializer(serializers.ModelSerializer):
         model = Company
         fields = [
             'name', 'registration_number', 'industry', 'address', 'city',
-            'state', 'postal_code', 'country', 'website', 'logo', 'established_date'
+            'state', 'postal_code', 'country', 'website'
         ]
 
 

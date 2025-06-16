@@ -11,6 +11,7 @@ const AddEmployeeForm = () => {
     role: ''
   });
 
+  
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -18,6 +19,7 @@ const AddEmployeeForm = () => {
       [name]: value
     }));
   };
+
 
   const handleSubmit = () => {
     console.log('Form submitted:', formData);

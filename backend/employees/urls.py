@@ -15,4 +15,5 @@ urlpatterns = [
     # path('<uuid:employee_id>/edit/', views.edit_employee, name='edit_employee'),
     # path('<uuid:employee_id>/delete/', views.delete_employee, name='delete_employee'),
     # path('dashboard/', views.employee_dashboard, name='employee_dashboard'),
-] 
+]
+

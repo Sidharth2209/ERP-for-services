@@ -1,93 +1,33 @@
-import React from 'react';
+// frontend/src/component/EmployeeListPage.jsx
+import React, { useEffect, useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchEmployees, setFilters, selectFilteredEmployees } from '../store/employeeSlice';
+import { fetchDepartments } from '../store/companySlice';
 
 const EmployeeListPage = () => {
-  // Mock employee data
-  const employees = [
-    {
-      id: 'EMP001',
-      name: 'Sarah Johnson',
-      department: 'Human Resources',
-      position: 'HR Manager',
-      email: 'sarah.johnson@company.com',
-      phone: '(555) 123-4567',
-      status: 'Active'
-    },
-    {
-      id: 'EMP002',
-      name: 'Michael Chen',
-      department: 'Engineering',
-      position: 'Senior Software Engineer',
-      email: 'michael.chen@company.com',
-      phone: '(555) 234-5678',
-      status: 'Active'
-    },
-    {
-      id: 'EMP003',
-      name: 'Emily Rodriguez',
-      department: 'Marketing',
-      position: 'Marketing Coordinator',
-      email: 'emily.rodriguez@company.com',
-      phone: '(555) 345-6789',
-      status: 'Deactive'
-    },
-    {
-      id: 'EMP004',
-      name: 'David Thompson',
-      department: 'Finance',
-      position: 'Financial Analyst',
-      email: 'david.thompson@company.com',
-      phone: '(555) 456-7890',
-      status: 'Active'
-    },
-    {
-      id: 'EMP005',
-      name: 'Lisa Park',
-      department: 'Operations',
-      position: 'Operations Manager',
-      email: 'lisa.park@company.com',
-      phone: '(555) 567-8901',
-      status: 'Active'
-    },
-    {
-      id: 'EMP006',
-      name: 'James Wilson',
-      department: 'Engineering',
-      position: 'DevOps Engineer',
-      email: 'james.wilson@company.com',
-      phone: '(555) 678-9012',
-      status: 'Deactive'
-    },
-    {
-      id: 'EMP007',
-      name: 'Amanda Foster',
-      department: 'Sales',
-      position: 'Sales Representative',
-      email: 'amanda.foster@company.com',
-      phone: '(555) 789-0123',
-      status: 'Active'
-    },
-    {
-      id: 'EMP008',
-      name: 'Robert Kim',
-      department: 'IT Support',
-      position: 'IT Specialist',
-      email: 'robert.kim@company.com',
-      phone: '(555) 890-1234',
-      status: 'Active'
-    },
-    {
-      id: 'EMP009',
-      name: 'Jessica Brown',
-      department: 'Legal',
-      position: 'Legal Counsel',
-      email: 'jessica.brown@company.com',
-      phone: '(555) 901-2345',
-      status: 'Deactive'
-    }
-  ];
+  const dispatch = useDispatch();
+  
+  // Redux state
+  const filteredEmployees = useSelector(selectFilteredEmployees);
+  const { loading, errors, filters } = useSelector((state) => state.employees);
+  const { departments } = useSelector((state) => state.company);
+  
+  // Local state for search
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    // Fetch employees and departments on component mount
+    dispatch(fetchEmployees());
+    dispatch(fetchDepartments());
+  }, [dispatch]);
+
+  useEffect(() => {
+    // Update filters when search term changes
+    dispatch(setFilters({ search: searchTerm }));
+  }, [searchTerm, dispatch]);
 
   const StatusPill = ({ status }) => {
-    const isActive = status === 'Active';
+    const isActive = status === 'Active' || status === true;
     
     const pillStyle = {
       display: 'inline-block',
@@ -101,8 +41,32 @@ const EmployeeListPage = () => {
       minWidth: '70px'
     };
 
-    return <span style={pillStyle}>{status}</span>;
+    return <span style={pillStyle}>{isActive ? 'Active' : 'Inactive'}</span>;
   };
+
+  const handleFilterChange = (filterType, value) => {
+    dispatch(setFilters({ [filterType]: value }));
+  };
+
+  if (loading.list) {
+    return (
+      <div style={containerStyle}>
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          Loading employees...
+        </div>
+      </div>
+    );
+  }
+
+  if (errors.list) {
+    return (
+      <div style={containerStyle}>
+        <div style={{ textAlign: 'center', padding: '2rem', color: '#ef4444' }}>
+          Error: {errors.list}
+        </div>
+      </div>
+    );
+  }
 
   const containerStyle = {
     padding: '24px',
@@ -117,6 +81,20 @@ const EmployeeListPage = () => {
     color: '#8b5cf6',
     marginBottom: '24px',
     letterSpacing: '-0.025em'
+  };
+
+  const filtersStyle = {
+    display: 'flex',
+    gap: '16px',
+    marginBottom: '24px',
+    flexWrap: 'wrap'
+  };
+
+  const filterInputStyle = {
+    padding: '8px 12px',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    fontSize: '14px'
   };
 
   const cardStyle = {
@@ -168,7 +146,39 @@ const EmployeeListPage = () => {
 
   return (
     <div style={containerStyle}>
-      <h1 style={headingStyle}>Employees</h1>
+      <h1 style={headingStyle}>Employees ({filteredEmployees.length})</h1>
+      
+      {/* Filters */}
+      <div style={filtersStyle}>
+        <input
+          type="text"
+          placeholder="Search employees..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={filterInputStyle}
+        />
+        
+        <select
+          value={filters.department}
+          onChange={(e) => handleFilterChange('department', e.target.value)}
+          style={filterInputStyle}
+        >
+          <option value="">All Departments</option>
+          {departments.map(dept => (
+            <option key={dept.id} value={dept.name}>{dept.name}</option>
+          ))}
+        </select>
+        
+        <select
+          value={filters.status}
+          onChange={(e) => handleFilterChange('status', e.target.value)}
+          style={filterInputStyle}
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
       
       <div style={cardStyle}>
         <table style={tableStyle}>
@@ -184,7 +194,7 @@ const EmployeeListPage = () => {
             </tr>
           </thead>
           <tbody>
-            {employees.map((employee, index) => (
+            {filteredEmployees.map((employee, index) => (
               <tr 
                 key={employee.id} 
                 style={{
@@ -200,21 +210,37 @@ const EmployeeListPage = () => {
               >
                 <td style={cellStyle}>
                   <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>
-                    {employee.id}
+                    {employee.employee_id}
                   </span>
                 </td>
-                <td style={{...cellStyle, ...nameStyle}}>{employee.name}</td>
-                <td style={cellStyle}>{employee.department}</td>
-                <td style={cellStyle}>{employee.position}</td>
-                <td style={{...cellStyle, ...emailStyle}}>{employee.email}</td>
-                <td style={cellStyle}>{employee.phone}</td>
+                <td style={{...cellStyle, ...nameStyle}}>
+                  {employee.user ? `${employee.user.first_name} ${employee.user.last_name}` : 'N/A'}
+                </td>
                 <td style={cellStyle}>
-                  <StatusPill status={employee.status} />
+                  {employee.department_name || 'No Department'}
+                </td>
+                <td style={cellStyle}>
+                  {employee.position || employee.role || 'N/A'}
+                </td>
+                <td style={{...cellStyle, ...emailStyle}}>
+                  {employee.user?.email || 'N/A'}
+                </td>
+                <td style={cellStyle}>
+                  {employee.user?.phone || 'N/A'}
+                </td>
+                <td style={cellStyle}>
+                  <StatusPill status={employee.is_active} />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        
+        {filteredEmployees.length === 0 && (
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+            No employees found matching your criteria.
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,46 +1,32 @@
+// frontend/src/component/CompanyDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { Building2, MapPin, Edit, Shield, Users, BarChart3, UserPlus, UserCog, Settings } from 'lucide-react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchCompanyProfile } from '../store/companySlice';
+import { fetchEmployees } from '../store/employeeSlice';
 
 const CompanyDashboard = () => {
   const navigate = useNavigate();
-  const [companyData, setCompanyData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  
+  // Redux state
+  const { user } = useSelector((state) => state.auth);
+  const { profile: companyData, loading, errors } = useSelector((state) => state.company);
+  const { employees } = useSelector((state) => state.employees);
+  
   const [hoveredCard, setHoveredCard] = useState(null);
   const [hoveredButton, setHoveredButton] = useState(null);
 
   useEffect(() => {
-    const fetchCompanyData = async () => {
-      try {
-        // First get the user data to get their company ID
-        const userResponse = await axios.get('/accounts/api/user/');
-        const userData = userResponse.data;
-        console.log('User Data:', userData); // Log user data
-        
-        if (userData.role !== 'PARENT') {
-          navigate('/dashboard'); // Redirect non-parent users
-          return;
-        }
-
-        // Then fetch the company details
-        const companyResponse = await axios.get(`/companies/api/profile/${userData.company}/`);
-        setCompanyData(companyResponse.data);
-        console.log('Company Data from API:', companyResponse.data); // Log raw company data
-
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch company data');
-        console.error('API Error in ParentDashboardPage:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCompanyData();
-  }, [navigate]);
-
-  console.log('Current companyData state:', companyData); // Log companyData state on re-render
+    // Only fetch data if user is authenticated and is a parent user
+    if (user && user.role === 'PARENT' && user.company) {
+      dispatch(fetchCompanyProfile(user.company));
+      dispatch(fetchEmployees());
+    } else if (user && user.role !== 'PARENT') {
+      navigate('/dashboard'); // Redirect non-parent users
+    }
+  }, [dispatch, user, navigate]);
 
   const styles = {
     container: {
@@ -237,17 +223,24 @@ const CompanyDashboard = () => {
     }
   };
 
-  if (loading) {
+  // Loading state
+  if (loading.profile) {
     return <div style={styles.loading}>Loading company data...</div>;
   }
 
-  if (error) {
-    return <div style={styles.error}>{error}</div>;
+  // Error state
+  if (errors.profile) {
+    return <div style={styles.error}>Error: {errors.profile}</div>;
   }
 
+  // No company data
   if (!companyData) {
     return <div style={styles.error}>No company data found</div>;
   }
+
+  // Calculate employee statistics from actual data
+  const activeEmployees = employees.filter(emp => emp.is_active).length;
+  const totalEmployees = employees.length;
 
   const handleEditProfile = () => {
     // TODO: Implement edit profile functionality
@@ -296,12 +289,14 @@ const CompanyDashboard = () => {
           <div style={styles.companyDetails}>
             <div style={styles.companyDetail}>
               <Building2 size={18} />
-              <span>{companyData.industry_display}</span>
+              <span>{companyData.industry_display || companyData.industry}</span>
             </div>
-            <div style={styles.companyDetail}>
-              <MapPin size={18} />
-              <span>{companyData.city}, {companyData.country}</span>
-            </div>
+            {companyData.city && companyData.country && (
+              <div style={styles.companyDetail}>
+                <MapPin size={18} />
+                <span>{companyData.city}, {companyData.country}</span>
+              </div>
+            )}
           </div>
         </section>
 
@@ -320,7 +315,7 @@ const CompanyDashboard = () => {
               <h3 style={styles.statTitle}>Admin Users</h3>
               <Shield size={28} style={styles.statIcon} />
             </div>
-            <div style={styles.statCount}>{companyData.admin_count}</div>
+            <div style={styles.statCount}>{companyData.admin_count || 0}</div>
             <div style={styles.statCTA}>Manage Admins →</div>
           </div>
 
@@ -337,7 +332,7 @@ const CompanyDashboard = () => {
               <h3 style={styles.statTitle}>Employees</h3>
               <Users size={28} style={styles.statIcon} />
             </div>
-            <div style={styles.statCount}>{companyData.employees_count}</div>
+            <div style={styles.statCount}>{companyData.employees_count || totalEmployees}</div>
             <div style={styles.statCTA}>View Employees →</div>
           </div>
 
@@ -354,7 +349,7 @@ const CompanyDashboard = () => {
               <h3 style={styles.statTitle}>Departments</h3>
               <BarChart3 size={28} style={styles.statIcon} />
             </div>
-            <div style={styles.statCount}>{companyData.departments_count}</div>
+            <div style={styles.statCount}>{companyData.departments_count || 0}</div>
             <div style={styles.statCTA}>Manage Departments →</div>
           </div>
         </section>
@@ -415,15 +410,23 @@ const CompanyDashboard = () => {
                 <div style={styles.infoValue}>{companyData.website || '—'}</div>
               </div>
               <div style={styles.infoItem}>
-                <div style={styles.infoLabel}>Address:</div>
-                <div style={styles.infoValue}>
-                  {companyData.address}, {companyData.city}, {companyData.state} {companyData.postal_code}, {companyData.country}
-                </div>
-              </div>
-              <div style={styles.infoItem}>
                 <div style={styles.infoLabel}>Phone:</div>
-                <div style={styles.infoValue}>{companyData.phone}</div>
+                <div style={styles.infoValue}>{companyData.phone || '—'}</div>
               </div>
+              {companyData.address && (
+                <div style={styles.infoItem}>
+                  <div style={styles.infoLabel}>Address:</div>
+                  <div style={styles.infoValue}>
+                    {[
+                      companyData.address,
+                      companyData.city,
+                      companyData.state,
+                      companyData.postal_code,
+                      companyData.country
+                    ].filter(Boolean).join(', ')}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -432,4 +435,4 @@ const CompanyDashboard = () => {
   );
 };
 
-export default CompanyDashboard; 
+export default CompanyDashboard;
