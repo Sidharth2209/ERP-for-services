@@ -1,16 +1,24 @@
-// frontend/src/App.js
+// frontend/src/App.js - COMPLETE VERSION WITH ROUTING
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import store from './store/store';
 import { getCurrentUser } from './store/authSlice';
 
-// Components
+// Import components
 import AuthPage from './component/AuthPage';
 import CompanyDashboard from './component/CompanyDashboard';
 import AdminDashboard from './component/AdminDashboard';
 import EmployeeDashboard from './component/EmployeeDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+
+// Import new components we'll create
+import Layout from './component/Layout';
+import AdminUsersPage from './component/AdminUsersPage';
+import AddAdminUser from './component/AddAdminUser';
+import EmployeesPage from './component/EmployeesPage';
+import AddEmployee from './component/AddEmployeeForm';
+
 
 function AppContent() {
   const dispatch = useDispatch();
@@ -25,12 +33,30 @@ function AppContent() {
   }, [dispatch, user]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)'
+      }}>
+        <div style={{
+          padding: '20px',
+          borderRadius: '8px',
+          background: 'white',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+        }}>
+          Loading...
+        </div>
+      </div>
+    );
   }
 
   return (
     <Router>
       <Routes>
+        {/* Public Routes */}
         <Route 
           path="/" 
           element={
@@ -46,25 +72,23 @@ function AppContent() {
           } 
         />
         
-        <Route 
-          path="/company-dashboard" 
-          element={
-            <ProtectedRoute>
-              <CompanyDashboard />
-            </ProtectedRoute>
-          } 
-        />
+        {/* Protected Routes with Layout */}
+        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          {/* Company Owner Routes */}
+          <Route path="company-dashboard" element={<CompanyDashboard />} />
+          <Route path="admin-users" element={<AdminUsersPage />} />
+          <Route path="admin-users/new" element={<AddAdminUser />} />
+          <Route path="employees" element={<EmployeesPage />} />
+          <Route path="employees/new" element={<AddEmployee />} />
+
+          
+          {/* Admin/Employee Routes */}
+          <Route path="dashboard" element={
+            user?.role === 'ADMIN' ? <AdminDashboard /> : <EmployeeDashboard />
+          } />
+        </Route>
         
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              {user?.role === 'ADMIN' ? <AdminDashboard /> : <EmployeeDashboard />}
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Add more routes as needed */}
+        {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
