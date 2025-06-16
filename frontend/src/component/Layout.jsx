@@ -1,4 +1,4 @@
-// frontend/src/components/Layout.jsx
+// frontend/src/components/Layout.jsx//nkasnksan
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
